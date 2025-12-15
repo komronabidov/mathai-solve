@@ -273,6 +273,8 @@ async function sendMessage(text, file = null) {
   // Файл очищается после успешной отправки в sendToServer
 }
 
+window.sendMessage = sendMessage;
+
 // Отдельная функция для отправки на сервер
 async function sendToServer(text, file = null) {
   
@@ -330,8 +332,10 @@ async function sendToServer(text, file = null) {
 
   // Очищаем файл
   attachedFile = null;
-  if (fileInput) fileInput.value = "";
-  if (mainFileInput) mainFileInput.value = "";
+  const fileInputEl = document.getElementById("file-input");
+  const mainFileInputEl = document.getElementById("main-file-input");
+  if (fileInputEl) fileInputEl.value = "";
+  if (mainFileInputEl) mainFileInputEl.value = "";
 
   // Обновляем превью (скрываем превью контейнер)
   updateFilePreview();
@@ -1283,6 +1287,8 @@ document.addEventListener('keydown', e => {
     e.target.value = '';
   }
 });
+
+
 
 
 
