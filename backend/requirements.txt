@@ -1,0 +1,9 @@
+flask>=3.0.0
+flask-cors>=4.0.0
+python-dotenv>=1.0.0
+flask-limiter>=4.0.0
+sympy>=1.12
+matplotlib>=3.8.0
+numpy>=1.26.0
+pillow>=10.0.0
+pytesseract>=0.3.10
