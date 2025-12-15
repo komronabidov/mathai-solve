@@ -1285,6 +1285,37 @@ document.addEventListener('keydown', e => {
 });
 
 
+// === ДОБАВЬ ЭТОТ КОД В КОНЕЦ ФАЙЛА ===
 
+// Импорты (если их ещё нет в файле — добавь наверху файла)
+import { getRedirectResult } from "firebase/auth";
+
+// Этот useEffect обработает результат после возврата с Google
+useEffect(() => {
+  if (typeof window !== "undefined") { // важно для Next.js
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          console.log("Залогинен через redirect:", result.user);
+          // Здесь можно обновить состояние, редиректнуть и т.д.
+          // Например: router.push("/dashboard") если используешь Next.js
+        }
+      })
+      .catch((error) => {
+        console.error("Ошибка redirect:", error);
+      });
+  }
+}, []);
+
+// Переопределяем поведение кнопки Google: вместо popup используем redirect
+// Найди свою функцию или кнопку, которая вызывает signInWithPopup, и замени её на эту:
+const handleGoogleSignIn = async () => {
+  try {
+    await signInWithRedirect(auth, googleProvider); // <-- вместо signInWithPopup
+    // После этого браузер уйдёт на Google, потом вернётся и useEffect выше обработает
+  } catch (error) {
+    console.error("Ошибка signInWithRedirect:", error);
+  }
+};
 
 });
