@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Math AI</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      },
+      svg: { fontCache: 'global' },
+      startup: {
+        ready: function() {
+          console.log('MathJax loaded successfully');
+          MathJax.startup.defaultReady();
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, query, orderBy, onSnapshot, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+    
+    const firebaseConfig = {
+      apiKey: "AIzaSyDfTkcZJWgV40f4RyMLD1ZWAbOiih6pqO0",
+      authDomain: "mathai-5af16.firebaseapp.com",
+      projectId: "mathai-5af16",
+      storageBucket: "mathai-5af16.appspot.com",
+      messagingSenderId: "454183466222",
+      appId: "1:454183466222:web:ada68fd64cf4d70830afff"
+    };
+    
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    
+    // Экспортируем в window для использования в script.js
+    window.firebaseAuth = auth;
+    window.firebaseDb = db;
+    window.firebaseProvider = provider;
+    window.signInWithPopup = signInWithPopup;
+    window.onAuthStateChanged = onAuthStateChanged;
+    window.signOut = signOut;
+    window.firestoreCollection = collection;
+    window.firestoreAddDoc = addDoc;
+    window.firestoreDoc = doc;
+    window.firestoreUpdateDoc = updateDoc;
+    window.firestoreDeleteDoc = deleteDoc;
+    window.firestoreQuery = query;
+    window.firestoreOrderBy = orderBy;
+    window.firestoreOnSnapshot = onSnapshot;
+    window.firestoreServerTimestamp = serverTimestamp;
+    window.firestoreGetDocs = getDocs;
+    
+    console.log("✅ Firebase инициализирован");
+  </script>
+</head>
+<body>
+  <script>
+    console.log("🚀 HTML загружен, начинаем инициализацию...");
+    // Простая проверка
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log("✅ DOM готов");
+    });
+  </script>
+
+  <canvas id="bg-canvas"></canvas>
+
+  <div id="mobile-sidebar-overlay" class="mobile-sidebar-overlay hidden"></div>
+
+  <div id="top-auth-buttons">
+    <button id="loginBtn" class="auth-btn">Log in</button>
+    <button id="signupBtn" class="auth-btn primary">Sign up</button>
+  </div>
+
+  <div id="sidebar" class="hidden">
+    <div id="sidebar-header">
+      <div class="search-container">
+        <i class="material-icons search-icon">search</i>
+        <input type="text" id="chat-search" placeholder="Поиск чатов..." autocomplete="off">
+        <button id="clear-search" class="clear-search-btn" style="display: none;">×</button>
+      </div>
+      <button id="new-chat-btn">+ Новый чат</button>
+    </div>
+    <div id="history-list"></div>
+    <div id="sidebar-user-section">
+      <div class="sidebar-user" id="user-avatar-btn">
+        <img id="user-avatar" src="" alt="avatar" class="avatar-clickable">
+        <div id="user-dropdown">
+          <div class="menu-item report">Пожаловаться</div>
+          <div class="menu-item logout">Выйти</div>
+        </div>
+      </div>
+    </div>
+    <button id="sidebar-toggle-btn" class="sidebar-toggle-btn" title="Закрыть sidebar">
+      <svg class="toggle-icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 18l6-6-6-6"></path>
+      </svg>
+      <svg class="toggle-icon-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+        <path d="M15 18l-6-6 6-6"></path>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Элементы при закрытом sidebar -->
+  <div id="collapsed-sidebar-content" class="collapsed-sidebar-content">
+    <button id="collapsed-new-chat" class="collapsed-new-chat-btn" title="Новый чат">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        <line x1="9" y1="9" x2="15" y2="9"/>
+        <line x1="9" y1="12" x2="15" y2="12"/>
+        <line x1="9" y1="15" x2="13" y2="15"/>
+      </svg>
+    </button>
+    <button id="collapsed-search" class="collapsed-search-btn" title="Поиск чатов">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/>
+        <path d="m21 21-4.35-4.35"/>
+        <circle cx="11" cy="11" r="3" fill="white" opacity="0.3"/>
+      </svg>
+    </button>
+    <button id="collapsed-toggle-btn" class="collapsed-toggle-btn" title="Открыть sidebar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 18l-6-6 6-6"></path>
+      </svg>
+    </button>
+  </div>
+
+  <div id="main-content">
+    <div id="welcome-screen">
+      <div class="welcome-container">
+        <h1>Math AI</h1>
+
+        <!-- ПОДСКАЗКИ И ПРИМЕРЫ -->
+        <div id="examples-section">
+        <h3>💡 Попробуйте спросить:</h3>
+        <div class="examples-grid">
+          <button class="example-btn" data-example="реши x² + 5x - 6 = 0"><span class="btn-icon">🔢</span>реши x² + 5x - 6 = 0</button>
+          <button class="example-btn" data-example="дифференцируй sin(x)"><span class="btn-icon">📈</span>дифференцируй sin(x)</button>
+          <button class="example-btn" data-example="интегрируй x²"><span class="btn-icon">∫</span>интегрируй x²</button>
+          <button class="example-btn" data-example="площадь треугольника со сторонами 3,4,5"><span class="btn-icon">📐</span>площадь треугольника 3,4,5</button>
+          <button class="example-btn" data-example="объем шара радиус 2"><span class="btn-icon">🔮</span>объем шара радиус 2</button>
+          <button class="example-btn" data-example="sin(30°) + cos(45°)"><span class="btn-icon">📊</span>sin(30°) + cos(45°)</button>
+          <button class="example-btn" data-example="реши систему: x+y=3, 2x-y=1"><span class="btn-icon">🧮</span>система уравнений</button>
+          <button class="example-btn" data-example="график x² - 2x + 1"><span class="btn-icon">📈</span>график x² - 2x + 1</button>
+        </div>
+
+        <div class="tips-section">
+          <h4>✨ Ultra AI возможности:</h4>
+          <ul class="tips-list">
+            <li>📷 Загружайте фото задач для решения</li>
+            <li>🔢 Выполняйте сложные вычисления</li>
+            <li>📚 Получайте пошаговые объяснения</li>
+            <li>📊 Строите графики функций</li>
+            <li>🎯 Автоматический анализ сложности задач</li>
+            <li>🧠 Персонализированные рекомендации</li>
+            <li>🎓 Генерация тренировочных задач</li>
+            <li>🤖 Понимание естественного языка</li>
+          </ul>
+          <div class="ultra-features">
+            <button class="ultra-btn" data-action="random">🎲 Случайная задача</button>
+            <button class="ultra-btn" data-action="skills">🧠 Что я умею?</button>
+          </div>
+        </div>
+        </div>
+      </div>
+
+      <!-- INPUT ПОЛЕ В ПОТОКЕ КОНТЕНТА -->
+      <div id="main-file-preview" class="file-preview" style="display: none;">
+        <div class="file-preview-content">
+          <img id="main-file-preview-img" class="file-preview-image" alt="Превью файла">
+          <div class="file-preview-info">
+            <div class="file-preview-name" id="main-file-preview-name"></div>
+            <div class="file-preview-size" id="main-file-preview-size"></div>
+          </div>
+          <button id="main-file-preview-remove" class="file-preview-remove" title="Удалить файл">
+            <i class="material-icons">close</i>
+          </button>
+        </div>
+      </div>
+      <div class="grok-input welcome-input">
+        <button id="main-file-upload-btn" class="file-upload-btn" title="Прикрепить фото или файл">
+          <i class="material-icons">attach_file</i>
+        </button>
+        <input id="main-input" type="text" placeholder="Например: график sin(x)" autocomplete="off">
+        <input type="file" id="main-file-input" accept="image/*,.pdf,.txt,.doc,.docx" style="display: none;">
+        <button id="main-send" class="send-btn"></button>
+      </div>
+    </div>
+
+    <div id="chat-screen" class="hidden">
+      <div id="chat-header">
+        <button id="backBtn">Back</button>
+        <span>Math AI</span>
+      </div>
+
+      <!-- ПРИМЕРЫ ЗАПРОСОВ В ЧАТЕ -->
+      <div id="chat-examples-section">
+        <h3>💡 Продолжить разговор:</h3>
+        <div class="examples-grid">
+          <button class="example-btn" data-example="покажи подробное решение"><span class="btn-icon">🔍</span>покажи подробное решение</button>
+          <button class="example-btn" data-example="объясни иначе"><span class="btn-icon">💭</span>объясни иначе</button>
+          <button class="example-btn" data-example="дайте пример"><span class="btn-icon">📝</span>дайте пример</button>
+          <button class="example-btn" data-example="проверь мой ответ"><span class="btn-icon">✅</span>проверь мой ответ</button>
+          <button class="example-btn" data-example="покажи график"><span class="btn-icon">📊</span>покажи график</button>
+          <button class="example-btn" data-example="реши похожую задачу"><span class="btn-icon">🧮</span>реши похожую задачу</button>
+        </div>
+
+        <div class="tips-section">
+          <h4>🚀 Что ещё можно спросить:</h4>
+          <ul class="tips-list">
+            <li>📚 Попросить объяснение любой темы</li>
+            <li>🔢 Решить сложные математические задачи</li>
+            <li>📈 Построить графики функций</li>
+            <li>🎯 Проверить домашние задания</li>
+            <li>🧠 Получить помощь с пониманием</li>
+            <li>📝 Сгенерировать тренировочные задачи</li>
+            <li>💡 Найти ошибки в рассуждениях</li>
+            <li>🔬 Обсудить научные концепции</li>
+          </ul>
+          <div class="ultra-features">
+            <button class="ultra-btn" data-action="clear">🗑️ Очистить чат</button>
+            <button class="ultra-btn" data-action="export">📤 Экспорт чата</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="chat-body"></div>
+      <div id="chat-file-preview" class="file-preview" style="display: none;">
+        <div class="file-preview-content">
+          <img id="chat-file-preview-img" class="file-preview-image" alt="Превью файла">
+          <div class="file-preview-info">
+            <div class="file-preview-name" id="chat-file-preview-name"></div>
+            <div class="file-preview-size" id="chat-file-preview-size"></div>
+          </div>
+          <button id="chat-file-preview-remove" class="file-preview-remove" title="Удалить файл">
+            <i class="material-icons">close</i>
+          </button>
+        </div>
+      </div>
+      <div class="grok-input chat-input">
+        <button id="file-upload-btn" class="file-upload-btn" title="Прикрепить фото или файл">
+          <i class="material-icons">attach_file</i>
+        </button>
+        <input id="chat-input" type="text" placeholder="Спроси что угодно..." autocomplete="off">
+        <input type="file" id="file-input" accept="image/*,.pdf,.txt,.doc,.docx" style="display: none;">
+        <button id="chat-send" class="send-btn"></button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- МОДАЛКА ВХОДА -->
+  <div id="login-modal" class="auth-modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box">
+      <button class="modal-close">×</button>
+      <h2>Вход</h2>
+      <p class="modal-subtitle">С возвращением!</p>
+
+      <!-- КНОПКА GOOGLE С ЦИФРАМИ (то, что ты просил) -->
+      <button id="googleLogin" class="google-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C14.06 1.73 12 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        Continue with Google
+      </button>
+
+      <div class="divider"><span>или</span></div>
+
+      <form id="loginForm">
+        <input type="email" placeholder="Email" required class="auth-input">
+        <input type="password" placeholder="Пароль" required class="auth-input" minlength="6">
+        <button type="submit" class="submit-btn">Войти</button>
+      </form>
+
+      <p class="auth-note">Забыли пароль? <a href="#">Восстановить</a></p>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА РЕГИСТРАЦИИ -->
+  <div id="signup-modal" class="auth-modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box">
+      <button class="modal-close">×</button>
+      <h2>Регистрация</h2>
+      <p class="modal-subtitle">Создайте аккаунт за секунду</p>
+
+      <!-- ТА ЖЕ САМАЯ КНОПКА GOOGLE С ЦИФРАМИ -->
+      <button id="googleSignup" class="google-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C14.06 1.73 12 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        Continue with Google
+      </button>
+
+      <div class="divider"><span>или</span></div>
+
+      <form id="signupForm">
+        <input type="text" placeholder="Ваше имя" required class="auth-input">
+        <input type="email" placeholder="Email" required class="auth-input">
+        <input type="password" placeholder="Пароль (мин. 6 символов)" required class="auth-input" minlength="6">
+        <button type="submit" class="submit-btn">Создать аккаунт</button>
+      </form>
+
+      <p class="auth-note">Нажимая «Создать аккаунт» вы соглашаетесь с <a href="#">условиями использования</a></p>
+    </div>
+  </div>
+
+  <!-- МОДАЛКА УДАЛЕНИЯ ЧАТА -->
+  <div id="delete-modal" class="delete-modal">
+    <div class="delete-modal-backdrop"></div>
+    <div class="delete-modal-box">
+      <h3 class="delete-modal-title">Удалить чат?</h3>
+      <p>Это действие нельзя отменить.<br>Чат будет удалён навсегда.</p>
+      <div class="delete-modal-buttons">
+        <button id="cancel-delete" class="delete-btn-cancel">Отмена</button>
+        <button id="confirm-delete" class="delete-btn-confirm">Удалить</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
