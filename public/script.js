@@ -1285,65 +1285,6 @@ document.addEventListener('keydown', e => {
 });
 
 
-// === ФИКС GOOGLE OAUTH НА VERCEL (ВСТАВЬ В САМЫЙ КОНЕЦ ФАЙЛА) ===
 
-// 1. Переопределяем кнопки Google на redirect вместо popup
-document.querySelectorAll("#googleLogin, #googleSignup").forEach(btn => {
-  // Клонируем кнопку, чтобы сбросить старые обработчики
-  const newBtn = btn.cloneNode(true);
-  btn.parentNode.replaceChild(newBtn, btn);
-
-  newBtn.addEventListener("click", async () => {
-    // Ждём загрузки Firebase
-    let attempts = 0;
-    while (!window.firebaseAuth || !window.firebaseProvider || !window.signInWithRedirect) {
-      if (attempts++ > 30) {
-        showNotification("Firebase не загрузился. Обновите страницу.", "error");
-        return;
-      }
-      await new Promise(res => setTimeout(res, 100));
-    }
-
-    try {
-      await window.signInWithRedirect(window.firebaseAuth, window.firebaseProvider);
-      // Браузер уйдёт на Google и вернётся обратно
-    } catch (err) {
-      console.error(err);
-      showNotification("Ошибка запуска входа: " + err.message, "error");
-    }
-  });
-});
-
-// 2. Обрабатываем результат возврата с Google (самое важное!)
-(async function handleRedirectResult() {
-  // Ждём, пока Firebase будет готов
-  let attempts = 0;
-  while (!window.firebaseAuth || !window.getRedirectResult) {
-    if (attempts++ > 50) return;
-    await new Promise(res => setTimeout(res, 100));
-  }
-
-  try {
-    const result = await window.getRedirectResult(window.firebaseAuth);
-    if (result?.user) {
-      console.log("✅ Успешный вход через Google:", result.user.email);
-
-      // Закрываем все модальные окна входа/регистрации
-      document.querySelectorAll('.auth-modal').forEach(modal => {
-        modal.classList.add('hidden');
-      });
-
-      // Приветственное уведомление
-      const name = result.user.displayName || result.user.email.split('@')[0];
-      showNotification(`Добро пожаловать, ${name}!`, "success");
-    }
-  } catch (err) {
-    // Эта ошибка нормальна при первом заходе на сайт — просто игнорируем
-    if (err.code !== 'auth/no-redirect-result') {
-      console.error("Ошибка обработки возврата:", err);
-      showNotification("Ошибка входа: попробуйте снова", "error");
-    }
-  }
-})();
 
 });
