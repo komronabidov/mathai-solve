@@ -1285,37 +1285,65 @@ document.addEventListener('keydown', e => {
 });
 
 
-// === ДОБАВЬ ЭТОТ КОД В КОНЕЦ ФАЙЛА ===
+// === ФИКС GOOGLE OAUTH НА VERCEL (ВСТАВЬ В САМЫЙ КОНЕЦ ФАЙЛА) ===
 
-// Импорты (если их ещё нет в файле — добавь наверху файла)
-import { getRedirectResult } from "firebase/auth";
+// 1. Переопределяем кнопки Google на redirect вместо popup
+document.querySelectorAll("#googleLogin, #googleSignup").forEach(btn => {
+  // Клонируем кнопку, чтобы сбросить старые обработчики
+  const newBtn = btn.cloneNode(true);
+  btn.parentNode.replaceChild(newBtn, btn);
 
-// Этот useEffect обработает результат после возврата с Google
-useEffect(() => {
-  if (typeof window !== "undefined") { // важно для Next.js
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user) {
-          console.log("Залогинен через redirect:", result.user);
-          // Здесь можно обновить состояние, редиректнуть и т.д.
-          // Например: router.push("/dashboard") если используешь Next.js
-        }
-      })
-      .catch((error) => {
-        console.error("Ошибка redirect:", error);
-      });
+  newBtn.addEventListener("click", async () => {
+    // Ждём загрузки Firebase
+    let attempts = 0;
+    while (!window.firebaseAuth || !window.firebaseProvider || !window.signInWithRedirect) {
+      if (attempts++ > 30) {
+        showNotification("Firebase не загрузился. Обновите страницу.", "error");
+        return;
+      }
+      await new Promise(res => setTimeout(res, 100));
+    }
+
+    try {
+      await window.signInWithRedirect(window.firebaseAuth, window.firebaseProvider);
+      // Браузер уйдёт на Google и вернётся обратно
+    } catch (err) {
+      console.error(err);
+      showNotification("Ошибка запуска входа: " + err.message, "error");
+    }
+  });
+});
+
+// 2. Обрабатываем результат возврата с Google (самое важное!)
+(async function handleRedirectResult() {
+  // Ждём, пока Firebase будет готов
+  let attempts = 0;
+  while (!window.firebaseAuth || !window.getRedirectResult) {
+    if (attempts++ > 50) return;
+    await new Promise(res => setTimeout(res, 100));
   }
-}, []);
 
-// Переопределяем поведение кнопки Google: вместо popup используем redirect
-// Найди свою функцию или кнопку, которая вызывает signInWithPopup, и замени её на эту:
-const handleGoogleSignIn = async () => {
   try {
-    await signInWithRedirect(auth, googleProvider); // <-- вместо signInWithPopup
-    // После этого браузер уйдёт на Google, потом вернётся и useEffect выше обработает
-  } catch (error) {
-    console.error("Ошибка signInWithRedirect:", error);
+    const result = await window.getRedirectResult(window.firebaseAuth);
+    if (result?.user) {
+      console.log("✅ Успешный вход через Google:", result.user.email);
+
+      // Закрываем все модальные окна входа/регистрации
+      document.querySelectorAll('.auth-modal').forEach(modal => {
+        modal.classList.add('hidden');
+      });
+
+      // Приветственное уведомление
+      const name = result.user.displayName || result.user.email.split('@')[0];
+      showNotification(`Добро пожаловать, ${name}!`, "success");
+    }
+  } catch (err) {
+    // Эта ошибка нормальна при первом заходе на сайт — просто игнорируем
+    if (err.code !== 'auth/no-redirect-result') {
+      console.error("Ошибка обработки возврата:", err);
+      showNotification("Ошибка входа: попробуйте снова", "error");
+    }
   }
-};
+})();
 
 });
