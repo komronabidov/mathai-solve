@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/__/auth/(.*)",
-      "destination": "https://ТВОЙ-PROJECT-ID.firebaseapp.com/__/auth/$1"
+      "destination": "https://math-ai-2025.firebaseapp.com/__/auth/$1"
     }
   ]
 }
